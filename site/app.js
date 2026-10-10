@@ -1,4 +1,5 @@
 import { diffTexts, inlineDiff, unifiedPatch } from './diff.js';
+import { LANGS, applyStatic, getLang, setLang, t } from './i18n.js';
 
 const $ = (id) => document.getElementById(id);
 const text = { a: $('text-a'), b: $('text-b') };
@@ -71,10 +72,10 @@ function inlineFor(bl) {
 // ---------- rendering ----------
 const ESC = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' };
 const esc = (s) => s.replace(/[&<>"]/g, (c) => ESC[c]);
-const code = (s, segs) => (segs ? segs.map(([t, hl]) => (hl ? `<span class="hl">${esc(t)}</span>` : esc(t))).join('') : esc(s));
+const code = (s, segs) => (segs ? segs.map(([str, hl]) => (hl ? `<span class="hl">${esc(str)}</span>` : esc(str))).join('') : esc(s));
 
 function labels() {
-  return { a: name.a.value.trim() || '原文本', b: name.b.value.trim() || '新文本' };
+  return { a: name.a.value.trim() || t('nameA'), b: name.b.value.trim() || t('nameB') };
 }
 
 /** Turn blocks into visible parts, folding long unchanged runs. */
@@ -95,7 +96,7 @@ function parts(r) {
 }
 
 const foldRow = (p, cols) =>
-  `<tr class="fold"><td colspan="${cols}"><button type="button" data-fold="${p.bi}">⋯ 展开 ${p.len} 行未改动的内容</button></td></tr>`;
+  `<tr class="fold"><td colspan="${cols}"><button type="button" data-fold="${p.bi}">${esc(t('fold', p.len))}</button></td></tr>`;
 
 function renderSplit(r) {
   const h = [];
@@ -153,19 +154,19 @@ function renderUnified(r) {
 
 function notes(r) {
   const n = [];
-  if (!r.exact) n.push('文本差异过大，计算超时，结果可能不是最精简的');
-  if (r.crlfMismatch) n.push('两侧换行符不同（CRLF / LF），已忽略');
-  if (r.aNoEOL !== r.bNoEOL && !prefs.ignoreWhitespace) n.push(`${r.aNoEOL ? '左侧' : '右侧'}末尾缺少换行符`);
+  if (!r.exact) n.push(t('noteTimeout'));
+  if (r.crlfMismatch) n.push(t('noteCrlf'));
+  if (r.aNoEOL !== r.bNoEOL && !prefs.ignoreWhitespace) n.push(t('noteNoEOL', r.aNoEOL));
   return n;
 }
 
 function renderStats() {
   const r = state.result;
   const el = $('stats');
-  if (state.stale) { el.innerHTML = '内容较大，按 <b>⌘/Ctrl + Enter</b> 对比'; return; }
+  if (state.stale) { el.innerHTML = t('stale', '<b>⌘/Ctrl + Enter</b>'); return; }
   if (!r || !r.changes) { el.textContent = ''; return; }
   const note = notes(r).map((s) => `<span class="note"> · ${esc(s)}</span>`).join('');
-  el.innerHTML = `<b class="ins">+${r.added}</b> <b class="del">−${r.removed}</b> · ${r.changes} 处改动${note}`;
+  el.innerHTML = `<b class="ins">+${r.added}</b> <b class="del">−${r.removed}</b> · ${t('changes', r.changes)}${note}`;
 }
 
 function render() {
@@ -174,10 +175,10 @@ function render() {
   for (const id of ['prev-btn', 'next-btn', 'copy-btn', 'download-btn']) $(id).disabled = !r?.changes;
   output.style.setProperty('--ln-w', `${String(Math.max(r.a.length, r.b.length)).length + 2}ch`);
   if (!r.a.length && !r.b.length) {
-    output.innerHTML = '<div class="placeholder">在上方粘贴或拖入两段文本，差异会实时显示在这里</div>';
+    output.innerHTML = `<div class="placeholder">${t('empty')}</div>`;
   } else if (!r.changes) {
-    const extra = notes(r).join('；');
-    output.innerHTML = `<div class="same">两段文本完全相同${extra ? `<small>${esc(extra)}</small>` : ''}</div>`;
+    const extra = notes(r).join(t('noteSep'));
+    output.innerHTML = `<div class="same">${t('same')}${extra ? `<small>${esc(extra)}</small>` : ''}</div>`;
   } else {
     output.innerHTML = `<div class="diff-wrap">${prefs.view === 'split' ? renderSplit(r) : renderUnified(r)}</div>`;
   }
@@ -204,7 +205,7 @@ function jump(dir) {
     void tr.offsetWidth;
     tr.classList.add('flash');
   }
-  toast(`第 ${rows.indexOf(target) + 1} / ${rows.length} 处`);
+  toast(t('jumpPos', rows.indexOf(target) + 1, rows.length));
 }
 $('prev-btn').onclick = () => jump(-1);
 $('next-btn').onclick = () => jump(1);
@@ -218,9 +219,9 @@ function patchText() {
 $('copy-btn').onclick = async () => {
   try {
     await navigator.clipboard.writeText(patchText());
-    toast('已复制 unified diff');
+    toast(t('copied'));
   } catch {
-    toast('复制失败，浏览器不允许访问剪贴板');
+    toast(t('copyFailed'));
   }
 };
 
@@ -252,9 +253,9 @@ $('share-btn').onclick = async () => {
     const url = `${location.origin}${location.pathname}#d=${data}`;
     await navigator.clipboard.writeText(url);
     const kb = (url.length / 1024).toFixed(1);
-    toast(url.length > 100_000 ? `链接已复制（${kb} KB），较长，部分聊天软件可能截断` : `链接已复制（${kb} KB），内容都在链接里`);
+    toast(t(url.length > 100_000 ? 'shareLong' : 'shareCopied', kb));
   } catch {
-    toast('生成链接失败');
+    toast(t('shareFailed'));
   }
 };
 
@@ -271,7 +272,7 @@ async function loadFromHash() {
     history.replaceState(null, '', location.pathname + location.search);
     return true;
   } catch {
-    toast('链接内容无法解析');
+    toast(t('badLink'));
     return false;
   }
 }
@@ -295,7 +296,7 @@ async function loadFile(side, file) {
     name[side].value = file.name;
     compareNowOrLater();
   } catch (e) {
-    toast(e.message === 'binary' ? `${file.name} 看起来是二进制文件` : `无法读取 ${file.name}`);
+    toast(t(e.message === 'binary' ? 'binary' : 'unreadable', file.name));
   }
 }
 
@@ -386,12 +387,13 @@ document.addEventListener('keydown', (e) => {
 // Theme: auto → light → dark
 const THEMES = ['auto', 'light', 'dark'];
 const THEME_ICON = { auto: '◐', light: '☀', dark: '☾' };
-const THEME_NAME = { auto: '跟随系统', light: '浅色', dark: '深色' };
-function applyTheme(t) {
-  if (t === 'auto') delete document.documentElement.dataset.theme;
-  else document.documentElement.dataset.theme = t;
-  $('theme-btn').textContent = THEME_ICON[t];
-  $('theme-btn').title = `主题：${THEME_NAME[t]}`;
+const themeName = (th) => t({ auto: 'themeAuto', light: 'themeLight', dark: 'themeDark' }[th]);
+function applyTheme(th) {
+  if (th === 'auto') delete document.documentElement.dataset.theme;
+  else document.documentElement.dataset.theme = th;
+  $('theme-btn').textContent = THEME_ICON[th];
+  $('theme-btn').title = t('themeTitle', themeName(th));
+  $('theme-btn').setAttribute('aria-label', $('theme-btn').title);
 }
 let theme = document.documentElement.dataset.theme ?? 'auto';
 applyTheme(theme);
@@ -399,10 +401,10 @@ $('theme-btn').onclick = () => {
   theme = THEMES[(THEMES.indexOf(theme) + 1) % THEMES.length];
   applyTheme(theme);
   try { theme === 'auto' ? localStorage.removeItem('litediff:theme') : localStorage.setItem('litediff:theme', theme); } catch {}
-  toast(`主题：${THEME_NAME[theme]}`);
+  toast(t('themeTitle', themeName(theme)));
 };
 
-const SAMPLE_A = `// 计算购物车总价
+const SAMPLE_A = `
 function total(items) {
   let sum = 0;
   for (const item of items) {
@@ -417,7 +419,7 @@ function format(n) {
 
 export { total, format };
 `;
-const SAMPLE_B = `// 计算购物车总价（含折扣）
+const SAMPLE_B = `
 function total(items, discount = 0) {
   let sum = 0;
   for (const item of items) {
@@ -433,10 +435,10 @@ function format(n, currency = "USD") {
 export { total, format };
 `;
 $('sample-btn').onclick = () => {
-  text.a.value = SAMPLE_A;
-  text.b.value = SAMPLE_B;
-  name.a.value = 'cart.js (旧)';
-  name.b.value = 'cart.js (新)';
+  text.a.value = t('sampleCommentA') + SAMPLE_A;
+  text.b.value = t('sampleCommentB') + SAMPLE_B;
+  name.a.value = t('sampleNameA');
+  name.b.value = t('sampleNameB');
   compare();
   saveSession();
 };
@@ -456,7 +458,16 @@ function toast(msg) {
   toastTimer = setTimeout(() => el.classList.remove('show'), 2200);
 }
 
+// ---------- language ----------
+$('lang-btn').onclick = () => {
+  setLang(LANGS[(LANGS.indexOf(getLang()) + 1) % LANGS.length]);
+  applyTheme(theme);
+  if (state.result) render();
+};
+
 // ---------- boot ----------
+applyStatic();
+document.documentElement.classList.remove('i18n-pending');
 syncControls();
 if (!(await loadFromHash())) {
   const d = store.get('sessionStorage', 'litediff:draft');

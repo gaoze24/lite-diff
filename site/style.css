@@ -381,3 +381,6 @@ footer {
   .actions { width: 100%; }
   footer { padding: 8px 16px 24px; }
 }
+
+/* index.html ships Chinese markup; non-Chinese visitors see nothing until app.js translates it. */
+.i18n-pending body { visibility: hidden; }

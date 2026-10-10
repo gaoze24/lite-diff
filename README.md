@@ -2,6 +2,7 @@
 
 A lightweight, dependency-free text diff tool that runs entirely in the browser. No build step — the `site/` folder is the whole app (~40 KB unminified).
 
+- Chinese and English UI: picked from the browser language, switchable in the header, or forced with `?lang=zh` / `?lang=en` (strings live in `site/i18n.js`)
 - Side-by-side and unified views, with word- or character-level highlights inside changed lines (CJK split per character)
 - Ignore whitespace / ignore case, fold unchanged regions, jump between changes (`j` / `k`)
 - Open or drag in files (drop two at once to fill both sides); UTF-8 with GB18030 fallback
