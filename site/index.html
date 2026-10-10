@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Lite Diff</title>
+  <meta name="description" content="轻量的在线文本对比工具，所有计算都在浏览器本地完成。">
+  <meta name="color-scheme" content="light dark">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23222'/%3E%3Crect x='6' y='9' width='20' height='5' rx='1.5' fill='%23e5534b'/%3E%3Crect x='6' y='18' width='20' height='5' rx='1.5' fill='%2346a758'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="style.css">
+  <script>
+    try { const t = localStorage.getItem('litediff:theme'); if (t) document.documentElement.dataset.theme = t; } catch {}
+  </script>
+  <script type="module" src="app.js"></script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="logo" aria-hidden="true"><i></i><i></i></span>
+      <h1>Lite Diff</h1>
+    </div>
+    <span class="tagline">文本对比，全部在本地完成</span>
+    <div class="grow"></div>
+    <button class="btn ghost" id="sample-btn" type="button">示例</button>
+    <button class="btn ghost icon" id="theme-btn" type="button" title="切换主题" aria-label="切换主题"></button>
+  </header>
+
+  <main>
+    <section class="inputs">
+      <div class="pane" data-side="a">
+        <div class="pane-head">
+          <span class="dot del" aria-hidden="true"></span>
+          <input class="name" id="name-a" placeholder="原文本" spellcheck="false" aria-label="左侧名称">
+          <label class="btn small">打开<input type="file" id="file-a" hidden></label>
+          <button class="btn small ghost" type="button" data-clear="a">清空</button>
+        </div>
+        <textarea id="text-a" spellcheck="false" placeholder="粘贴原文本，或把文件拖到这里"></textarea>
+      </div>
+      <button class="btn swap" id="swap-btn" type="button" title="交换左右" aria-label="交换左右">⇄</button>
+      <div class="pane" data-side="b">
+        <div class="pane-head">
+          <span class="dot ins" aria-hidden="true"></span>
+          <input class="name" id="name-b" placeholder="新文本" spellcheck="false" aria-label="右侧名称">
+          <label class="btn small">打开<input type="file" id="file-b" hidden></label>
+          <button class="btn small ghost" type="button" data-clear="b">清空</button>
+        </div>
+        <textarea id="text-b" spellcheck="false" placeholder="粘贴新文本，或把文件拖到这里"></textarea>
+      </div>
+    </section>
+
+    <section class="toolbar" id="toolbar">
+      <div class="seg" role="radiogroup" aria-label="视图">
+        <label><input type="radio" name="view" value="split"><span>并排</span></label>
+        <label><input type="radio" name="view" value="unified"><span>合并</span></label>
+      </div>
+      <div class="seg" role="radiogroup" aria-label="行内高亮">
+        <label><input type="radio" name="inline" value="word"><span>按词</span></label>
+        <label><input type="radio" name="inline" value="char"><span>按字符</span></label>
+        <label><input type="radio" name="inline" value="off"><span>不高亮</span></label>
+      </div>
+      <label class="check"><input type="checkbox" id="opt-ws">忽略空白</label>
+      <label class="check"><input type="checkbox" id="opt-case">忽略大小写</label>
+      <label class="check"><input type="checkbox" id="opt-collapse">折叠未改动</label>
+      <div class="grow"></div>
+      <span class="stats" id="stats" aria-live="polite"></span>
+      <div class="actions">
+        <button class="btn small" id="prev-btn" type="button" title="上一处 (k)">↑</button>
+        <button class="btn small" id="next-btn" type="button" title="下一处 (j)">↓</button>
+        <button class="btn small" id="copy-btn" type="button">复制 patch</button>
+        <button class="btn small" id="download-btn" type="button">下载</button>
+        <button class="btn small primary" id="share-btn" type="button">分享链接</button>
+      </div>
+    </section>
+
+    <section class="output" id="output"></section>
+  </main>
+
+  <footer>
+    数据只在你的浏览器里处理，不会上传。分享链接把内容压缩进 URL 的 # 部分，同样不经过服务器。
+  </footer>
+
+  <div class="drop-hint" id="drop-hint">松开以载入文件（一次拖两个文件可分别放到左右两侧）</div>
+  <div class="toast" id="toast" role="status"></div>
+</body>
+</html>
